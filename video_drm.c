@@ -219,16 +219,10 @@ void SetPlane(VideoRender * render, drmModeAtomicReqPtr ModeReq, uint32_t plane_
 /// must the zpos change. At the end it must change back.
 /// @param backward		if set change to origin.
 ///
-void ChangePlanes(VideoRender * render, int back)
+void SetChangePlanes(VideoRender * render, drmModeAtomicReqPtr ModeReq, int back)
 {
-	drmModeAtomicReqPtr ModeReq;
-	const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
-//	const uint32_t flags = DRM_MODE_ATOMIC_NONBLOCK | DRM_MODE_PAGE_FLIP_ASYNC;
 	uint64_t zpos_video;
 	uint64_t zpos_osd;
-
-	if (!(ModeReq = drmModeAtomicAlloc()))
-		fprintf(stderr, "ChangePlanes: cannot allocate atomic request (%d): %m\n", errno);
 
 	if (back) {
 		zpos_video = render->zpos_overlay;
@@ -237,13 +231,9 @@ void ChangePlanes(VideoRender * render, int back)
 		zpos_video = render->zpos_primary;
 		zpos_osd = render->zpos_overlay;
 	}
+
 	SetPlaneZpos(render, ModeReq, render->video_plane, zpos_video);
 	SetPlaneZpos(render, ModeReq, render->osd_plane, zpos_osd);
-
-	if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
-		fprintf(stderr, "ChangePlanes: cannot change planes (%d): %m\n", errno);
-
-	drmModeAtomicFree(ModeReq);
 }
 
 size_t ReadLineFromFile(char *buf, size_t size, char * file)
@@ -945,7 +935,19 @@ static void *DisplayHandlerThread(void * arg)
 void VideoOsdClear(VideoRender * render)
 {
 	if (render->use_zpos) {
-		ChangePlanes(render, 1);
+		drmModeAtomicReqPtr ModeReq;
+		const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
+
+		if (!(ModeReq = drmModeAtomicAlloc()))
+			fprintf(stderr, "ChangePlanes: cannot allocate atomic request (%d): %m\n", errno);
+
+		SetChangePlanes(render, ModeReq, 1);
+
+		if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
+			fprintf(stderr, "ChangePlanes: cannot change planes (%d): %m\n", errno);
+
+		drmModeAtomicFree(ModeReq);
+
 		memset((void *)render->buf_osd.plane[0], 0,
 			(size_t)(render->buf_osd.pitch[0] * render->buf_osd.height));
 	} else {
@@ -986,7 +988,18 @@ void VideoOsdDrawARGB(VideoRender * render, __attribute__ ((unused)) int xi,
 	int i;
 
 	if (render->use_zpos) {
-		ChangePlanes(render, 0);
+		drmModeAtomicReqPtr ModeReq;
+		const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
+
+		if (!(ModeReq = drmModeAtomicAlloc()))
+			fprintf(stderr, "ChangePlanes: cannot allocate atomic request (%d): %m\n", errno);
+
+		SetChangePlanes(render, ModeReq, 0);
+
+		if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
+			fprintf(stderr, "ChangePlanes: cannot change planes (%d): %m\n", errno);
+
+		drmModeAtomicFree(ModeReq);
 	} else {
 		if (render->buf_osd.x == 0){
 			drmModeAtomicReqPtr ModeReq;
