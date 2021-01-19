@@ -204,7 +204,7 @@ void SetPlaneZpos(VideoRender * render, drmModeAtomicReqPtr ModeReq, uint32_t pl
 }
 
 void SetPlane(VideoRender * render, drmModeAtomicReqPtr ModeReq, uint32_t plane_id,
-				uint64_t crtc_id, uint64_t fb_id, uint64_t flags,
+				uint64_t crtc_id, uint64_t fb_id,
 				uint64_t crtc_x, uint64_t crtc_y, uint64_t crtc_w, uint64_t crtc_h,
 				uint64_t src_x, uint64_t src_y, uint64_t src_w, uint64_t src_h)
 {
@@ -841,7 +841,7 @@ page_flip:
 	render->act_buf = buf;
 
 	drmModeAtomicReqPtr ModeReq;
-	const uint32_t flags = DRM_MODE_PAGE_FLIP_EVENT;
+	uint32_t flags = DRM_MODE_PAGE_FLIP_EVENT;
 	if (!(ModeReq = drmModeAtomicAlloc()))
 		fprintf(stderr, "Frame2Display: cannot allocate atomic request (%d): %m\n", errno);
 
@@ -852,6 +852,7 @@ page_flip:
 	if (!PicWidth)
 		PicWidth = render->mode.hdisplay;
 
+	// handle the video plane
 	if (buf->width != (GetPropertyValue(render->fd_drm, render->video_plane,
 		DRM_MODE_OBJECT_PLANE, "SRC_W") >> 16))
 			SetPlaneSrc(render, ModeReq, render->video_plane, 0, 0, buf->width, buf->height);
@@ -862,6 +863,27 @@ page_flip:
 				(render->mode.hdisplay - PicWidth) / 2, 0, PicWidth, render->mode.vdisplay);
 
 	SetPlaneFbId(render, ModeReq, render->video_plane, buf->fb_id);
+
+	// handle the osd plane
+	if (render->OsdShown) {
+		if (render->use_zpos) {
+			flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
+			SetChangePlanes(render, ModeReq, 0);
+		} else {
+			SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
+				 render->buf_osd.draw_x, render->buf_osd.draw_y, render->buf_osd.draw_width, render->buf_osd.draw_height,
+				 0, 0, render->buf_osd.draw_width, render->buf_osd.draw_height);
+		}
+	} else {
+		if (render->use_zpos) {
+			flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
+			SetChangePlanes(render, ModeReq, 1);
+		} else {
+			SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
+				 0, 0, render->buf_osd.width, render->buf_osd.height,
+				 0, 0, 0, 0);
+		}
+	}
 
 	if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
 		fprintf(stderr, "Frame2Display: cannot page flip to FB %i (%d): %m\n",
@@ -934,39 +956,8 @@ static void *DisplayHandlerThread(void * arg)
 ///
 void VideoOsdClear(VideoRender * render)
 {
-	if (render->use_zpos) {
-		drmModeAtomicReqPtr ModeReq;
-		const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
-
-		if (!(ModeReq = drmModeAtomicAlloc()))
-			fprintf(stderr, "ChangePlanes: cannot allocate atomic request (%d): %m\n", errno);
-
-		SetChangePlanes(render, ModeReq, 1);
-
-		if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
-			fprintf(stderr, "ChangePlanes: cannot change planes (%d): %m\n", errno);
-
-		drmModeAtomicFree(ModeReq);
-
-		memset((void *)render->buf_osd.plane[0], 0,
-			(size_t)(render->buf_osd.pitch[0] * render->buf_osd.height));
-	} else {
-		drmModeAtomicReqPtr ModeReq;
-		const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
-
-		if (!(ModeReq = drmModeAtomicAlloc()))
-			fprintf(stderr, "VideoOsdClear: cannot allocate atomic request (%d): %m\n", errno);
-
-		SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, 0, 0,
-			 0, 0, render->buf_osd.width, render->buf_osd.height, 0, 0, 0, 0);
-
-		if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
-			fprintf(stderr, "VideoOsdClear: atomic commit failed (%d): %m\n", errno);
-
-		drmModeAtomicFree(ModeReq);
-
-		render->buf_osd.x = 0;
-	}
+	memset((void *)render->buf_osd.plane[0], 0,
+		(size_t)(render->buf_osd.pitch[0] * render->buf_osd.height));
 
 	render->OsdShown = 0;
 }
@@ -989,42 +980,15 @@ void VideoOsdDrawARGB(VideoRender * render, __attribute__ ((unused)) int xi,
 {
 	int i;
 
-	if (render->use_zpos) {
-		drmModeAtomicReqPtr ModeReq;
-		const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
-
-		if (!(ModeReq = drmModeAtomicAlloc()))
-			fprintf(stderr, "ChangePlanes: cannot allocate atomic request (%d): %m\n", errno);
-
-		SetChangePlanes(render, ModeReq, 0);
-
-		if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
-			fprintf(stderr, "ChangePlanes: cannot change planes (%d): %m\n", errno);
-
-		drmModeAtomicFree(ModeReq);
-	} else {
-		if (render->buf_osd.x == 0){
-			drmModeAtomicReqPtr ModeReq;
-			const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
-
-			if (!(ModeReq = drmModeAtomicAlloc()))
-				fprintf(stderr, "VideoOsdClear: cannot allocate atomic request (%d): %m\n", errno);
-
-			SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id, 0,
-				 x, y, width, height, 0, 0, width, height);
-
-			if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
-				fprintf(stderr, "VideoOsdClear: atomic commit failed (%d): %m\n", errno);
-
-			drmModeAtomicFree(ModeReq);
-
-			render->buf_osd.x = x;
-			render->buf_osd.y = y;
-		}
+	if (!render->use_zpos) {
+		render->buf_osd.draw_x = x;
+		render->buf_osd.draw_y = y;
+		render->buf_osd.draw_width = width;
+		render->buf_osd.draw_height = height;
 	}
 
 	for (i = 0; i < height; ++i) {
-		memcpy(render->buf_osd.plane[0] + (x - render->buf_osd.x) * 4 + (i + y - render->buf_osd.y)
+		memcpy(render->buf_osd.plane[0] + (x - render->buf_osd.draw_x) * 4 + (i + y - render->buf_osd.draw_y)
 		   * render->buf_osd.pitch[0], argb + i * pitch, (size_t)pitch);
 	}
 
@@ -1736,7 +1700,6 @@ void VideoInit(VideoRender * render)
 
 	// osd FB
 	render->buf_osd.pix_fmt = DRM_FORMAT_ARGB8888;
-	render->buf_osd.x = 0;
 	render->buf_osd.width = render->mode.hdisplay;
 	render->buf_osd.height = render->mode.vdisplay;
 	if (SetupFB(render, &render->buf_osd, NULL)){

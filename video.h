@@ -48,7 +48,8 @@
 typedef struct _Mmal_Render_ VideoRender;
 #else
 struct drm_buf {
-	uint32_t x, y, width, height, size, pitch[4], handle[4], offset[4], fb_id;
+	uint32_t width, height, size, pitch[4], handle[4], offset[4], fb_id;
+	uint32_t draw_width, draw_height, draw_x, draw_y;
 	uint8_t *plane[4];
 	uint32_t pix_fmt;
 	int fd_prime;
