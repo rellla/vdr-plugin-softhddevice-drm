@@ -103,6 +103,7 @@ struct _Drm_Render_
 	AVFrame *lastframe;
 	int buffers;
 	int enqueue_buffer;
+	int OsdShown;
 };
 
     /// Video hardware decoder typedef
