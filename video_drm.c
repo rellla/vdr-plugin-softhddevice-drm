@@ -959,6 +959,8 @@ void VideoOsdClear(VideoRender * render)
 	}
 	memset((void *)render->buf_osd.plane[0], 0,
 		(size_t)(render->buf_osd.pitch[0] * render->buf_osd.height));
+
+	render->OsdShown = 0;
 }
 
 ///
@@ -1017,6 +1019,8 @@ void VideoOsdDrawARGB(VideoRender * render, __attribute__ ((unused)) int xi,
 		memcpy(render->buf_osd.plane[0] + x * 4 + (i + y) * render->buf_osd.pitch[0],
 			argb + i * pitch, (size_t)pitch);
 	}
+
+	render->OsdShown = 1;
 }
 
 //----------------------------------------------------------------------------
@@ -1793,6 +1797,8 @@ void VideoInit(VideoRender * render)
 		fprintf(stderr, "cannot set atomic mode (%d): %m\n", errno);
 
 	drmModeAtomicFree(ModeReq);
+
+	render->OsdShown = 0;
 
 	// init variables page flip
 //    if (render->ev.page_flip_handler != Drm_page_flip_event) {
