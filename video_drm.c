@@ -203,6 +203,17 @@ void SetPlaneZpos(VideoRender * render, drmModeAtomicReqPtr ModeReq, uint32_t pl
 			DRM_MODE_OBJECT_PLANE, "zpos", zpos);
 }
 
+void SetPlane(VideoRender * render, drmModeAtomicReqPtr ModeReq, uint32_t plane_id,
+				uint64_t crtc_id, uint64_t fb_id, uint64_t flags,
+				uint64_t crtc_x, uint64_t crtc_y, uint64_t crtc_w, uint64_t crtc_h,
+				uint64_t src_x, uint64_t src_y, uint64_t src_w, uint64_t src_h)
+{
+	SetPlaneCrtcId(render, ModeReq, plane_id, crtc_id);
+	SetPlaneFbId(render, ModeReq, plane_id, fb_id);
+	SetPlaneCrtc(render, ModeReq, plane_id, crtc_x, crtc_y, crtc_w, crtc_h);
+	SetPlaneSrc(render, ModeReq, plane_id, src_x, src_y, src_w, src_h);
+}
+
 ///
 /// If primary plane support only rgb and overlay plane nv12
 /// must the zpos change. At the end it must change back.
@@ -938,9 +949,20 @@ void VideoOsdClear(VideoRender * render)
 		memset((void *)render->buf_osd.plane[0], 0,
 			(size_t)(render->buf_osd.pitch[0] * render->buf_osd.height));
 	} else {
-		if (drmModeSetPlane(render->fd_drm, render->osd_plane, render->crtc_id, 0, 0,
-			0, 0, render->buf_osd.width, render->buf_osd.height, 0, 0, 0 << 16, 0 << 16))
-				fprintf(stderr, "VideoOsdClear: failed to clear plane: (%d): %m\n", (errno));
+		drmModeAtomicReqPtr ModeReq;
+		const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
+
+		if (!(ModeReq = drmModeAtomicAlloc()))
+			fprintf(stderr, "VideoOsdClear: cannot allocate atomic request (%d): %m\n", errno);
+
+		SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, 0, 0,
+			 0, 0, render->buf_osd.width, render->buf_osd.height, 0, 0, 0, 0);
+
+		if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
+			fprintf(stderr, "VideoOsdClear: atomic commit failed (%d): %m\n", errno);
+
+		drmModeAtomicFree(ModeReq);
+
 		render->buf_osd.x = 0;
 	}
 }
@@ -967,9 +989,20 @@ void VideoOsdDrawARGB(VideoRender * render, __attribute__ ((unused)) int xi,
 		ChangePlanes(render, 0);
 	} else {
 		if (render->buf_osd.x == 0){
-			if (drmModeSetPlane(render->fd_drm, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
-				0, x, y, width, height, 0, 0, width << 16, height << 16))
-					fprintf(stderr, "VideoOsdDrawARGB: failed to enable plane: (%d): %m\n", (errno));
+			drmModeAtomicReqPtr ModeReq;
+			const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
+
+			if (!(ModeReq = drmModeAtomicAlloc()))
+				fprintf(stderr, "VideoOsdClear: cannot allocate atomic request (%d): %m\n", errno);
+
+			SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id, 0,
+				 x, y, width, height, 0, 0, width, height);
+
+			if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
+				fprintf(stderr, "VideoOsdClear: atomic commit failed (%d): %m\n", errno);
+
+			drmModeAtomicFree(ModeReq);
+
 			render->buf_osd.x = x;
 			render->buf_osd.y = y;
 		}
