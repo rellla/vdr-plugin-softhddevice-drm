@@ -867,21 +867,33 @@ page_flip:
 	// handle the osd plane
 	if (render->OsdShown) {
 		if (render->use_zpos) {
-			flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
-			SetChangePlanes(render, ModeReq, 0);
+			if (render->buf_osd.dirty) {
+				flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
+				SetChangePlanes(render, ModeReq, 0);
+				render->buf_osd.dirty = 0;
+			}
 		} else {
-			SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
-				 render->buf_osd.draw_x, render->buf_osd.draw_y, render->buf_osd.draw_width, render->buf_osd.draw_height,
-				 0, 0, render->buf_osd.draw_width, render->buf_osd.draw_height);
+			if (render->buf_osd.dirty) {
+				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
+					 render->buf_osd.draw_x, render->buf_osd.draw_y, render->buf_osd.draw_width, render->buf_osd.draw_height,
+					 0, 0, render->buf_osd.draw_width, render->buf_osd.draw_height);
+				render->buf_osd.dirty = 0;
+			}
 		}
 	} else {
 		if (render->use_zpos) {
-			flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
-			SetChangePlanes(render, ModeReq, 1);
+			if (render->buf_osd.dirty) {
+				flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
+				SetChangePlanes(render, ModeReq, 1);
+				render->buf_osd.dirty = 0;
+			}
 		} else {
-			SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
-				 0, 0, render->buf_osd.width, render->buf_osd.height,
-				 0, 0, 0, 0);
+			if (render->buf_osd.dirty) {
+				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
+					 0, 0, render->buf_osd.width, render->buf_osd.height,
+					 0, 0, 0, 0);
+				render->buf_osd.dirty = 0;
+			}
 		}
 	}
 
@@ -958,6 +970,7 @@ void VideoOsdClear(VideoRender * render)
 {
 	memset((void *)render->buf_osd.plane[0], 0,
 		(size_t)(render->buf_osd.pitch[0] * render->buf_osd.height));
+	render->buf_osd.dirty = 1;
 
 	render->OsdShown = 0;
 }
@@ -993,6 +1006,8 @@ void VideoOsdDrawARGB(VideoRender * render, __attribute__ ((unused)) int xi,
 	}
 
 	render->OsdShown = 1;
+	render->buf_osd.dirty = 1;
+
 //	fprintf(stderr, "DrmOsdDrawARGB width: %i height: %i pitch: %i x: %i y: %i xi: %i yi: %i diff_y: %i diff_x: %i\n",
 //	   width, height, pitch, x, y, xi, yi, y - render->buf_osd.y, x - render->buf_osd.x);
 }
