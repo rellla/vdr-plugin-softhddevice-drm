@@ -858,27 +858,33 @@ page_flip:
 
 	// handle the osd plane
 	if (render->OsdShown) {
-		if (render->use_zpos && render->zpos_overlay != GetPropertyValue(render->fd_drm,
-				render->osd_plane, DRM_MODE_OBJECT_PLANE, "zpos")) {
-			flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
-			SetChangePlanes(render, ModeReq, 0);
-		}
-		if (!GetPropertyValue(render->fd_drm, render->osd_plane,
-			DRM_MODE_OBJECT_PLANE, "FB_ID")){
-			SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
-				 0, 0, render->buf_osd.width, render->buf_osd.height,
-				 0, 0, render->buf_osd.width, render->buf_osd.height);
-		}
-	} else {
-		if (render->use_zpos) {
-			if (render->zpos_overlay == GetPropertyValue(render->fd_drm,
+		if (render->buf_osd.dirty) {
+			if (render->use_zpos && render->zpos_overlay != GetPropertyValue(render->fd_drm,
 					render->osd_plane, DRM_MODE_OBJECT_PLANE, "zpos")) {
 				flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
-				SetChangePlanes(render, ModeReq, 1);
+				SetChangePlanes(render, ModeReq, 0);
 			}
-		} else {
-			SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
-				 0, 0, render->buf_osd.width, render->buf_osd.height, 0, 0, 0, 0);
+			if (!GetPropertyValue(render->fd_drm, render->osd_plane,
+				DRM_MODE_OBJECT_PLANE, "FB_ID")){
+				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
+					 0, 0, render->buf_osd.width, render->buf_osd.height,
+					 0, 0, render->buf_osd.width, render->buf_osd.height);
+			}
+			render->buf_osd.dirty = 0;
+		}
+	} else {
+		if (render->buf_osd.dirty) {
+			if (render->use_zpos) {
+				if (render->zpos_overlay == GetPropertyValue(render->fd_drm,
+						render->osd_plane, DRM_MODE_OBJECT_PLANE, "zpos")) {
+					flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
+					SetChangePlanes(render, ModeReq, 1);
+				}
+			} else {
+				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
+					 0, 0, render->buf_osd.width, render->buf_osd.height, 0, 0, 0, 0);
+			}
+			render->buf_osd.dirty = 0;
 		}
 	}
 
@@ -955,6 +961,7 @@ void VideoOsdClear(VideoRender * render)
 {
 	memset((void *)render->buf_osd.plane[0], 0,
 		(size_t)(render->buf_osd.pitch[0] * render->buf_osd.height));
+	render->buf_osd.dirty = 1;
 
 	render->OsdShown = 0;
 }
@@ -981,6 +988,7 @@ void VideoOsdDrawARGB(VideoRender * render, __attribute__ ((unused)) int xi,
 		memcpy(render->buf_osd.plane[0] + x * 4 + (i + y) * render->buf_osd.pitch[0],
 			argb + i * pitch, (size_t)pitch);
 	}
+	render->buf_osd.dirty = 1;
 
 	render->OsdShown = 1;
 }
