@@ -13,8 +13,15 @@ PLUGIN = softhddevice-drm
 
 	# enable this for MMAL (RaspberryPi 2)
 MMAL ?= 0
+	# enable this for GLES OSD
+GLES ?= 0
 
 CONFIG := #-DDEBUG 				# enable debug output+functions
+ifeq ($(GLES),1)
+CONFIG += -DUSE_GLES
+#CONFIG += -DGL_DEBUG
+#CONFIG += -DWRITE_PNG
+endif
 #CONFIG += -DAV_SYNC_DEBUG		# enable debug messages AV_SYNC
 #CONFIG += -DSOUND_DEBUG		# enable debug messages SOUND
 #CONFIG += -DOSD_DEBUG			# enable debug messages OSD
@@ -78,6 +85,12 @@ LIBS += -lrt -lmmal -lmmal_core -lbcm_host -lvcos $(shell pkg-config --libs alsa
 else
 _CFLAGS += $(shell pkg-config --cflags alsa libavcodec libavfilter libdrm)
 LIBS += $(shell pkg-config --libs alsa libavcodec libavfilter libdrm)
+ifeq ($(GLES),1)
+_CFLAGS += $(shell pkg-config --cflags gbm glesv2 egl)
+LIBS += $(shell pkg-config --libs gbm glesv2 egl)
+_CFLAGS += $(shell pkg-config --cflags freetype2)
+LIBS += $(shell pkg-config --libs freetype2)
+endif
 endif
 
 ### Includes and Defines (add further entries here):
@@ -100,6 +113,10 @@ ifeq ($(MMAL),1)
 OBJS = $(PLUGIN).o mediaplayer.o softhddev.o video_mmal.o audio.o codec.o ringbuffer.o
 else
 OBJS = $(PLUGIN).o mediaplayer.o softhddev.o video_drm.o audio.o codec.o ringbuffer.o
+endif
+
+ifeq ($(GLES),1)
+OBJS += openglosd.o
 endif
 
 SRCS = $(wildcard $(OBJS:.o=.c)) $(PLUGIN).cpp
