@@ -182,6 +182,9 @@ msgstr "Erzeuge primäres Gerät"
 msgid "Hide main menu entry"
 msgstr "Verstecke Hauptmenüeintrag"
 
+msgid "GPU mem used for image caching (MB)"
+msgstr ""
+
 msgid "Audio"
 msgstr "Audio"
 
