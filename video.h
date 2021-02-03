@@ -53,6 +53,7 @@ struct drm_buf {
 	uint32_t pix_fmt;
 	int fd_prime;
 	AVFrame *frame;
+	int dirty;
 };
 
 struct _Drm_Render_
