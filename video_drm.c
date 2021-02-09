@@ -1116,7 +1116,6 @@ page_flip:
 			}
 
 			if (render->buf_osd_gl && render->buf_osd_gl->dirty) {
-				flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
 				SetPlaneZpos(render, ModeReq, render->video_plane, render->zpos_primary);
 				SetPlaneZpos(render, ModeReq, render->osd_plane, render->zpos_overlay);
 				render->buf_osd_gl->dirty = 0;
@@ -1136,7 +1135,6 @@ page_flip:
 				if (GetPropertyValue(render->fd_drm, render->osd_plane, DRM_MODE_OBJECT_PLANE, "zpos", &value))
 					fprintf(stderr, "Failed to get property 'zpos'\n");
 				if (render->zpos_overlay != value) {
-					flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
 					SetChangePlanes(render, ModeReq, 0);
 				}
 			}
@@ -1160,7 +1158,6 @@ page_flip:
 				render->buf_osd_gl->init = 1;
 			}
 			if (render->buf_osd_gl && render->buf_osd_gl->dirty) {
-				flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
 				SetPlaneZpos(render, ModeReq, render->video_plane, render->zpos_overlay);
 				SetPlaneZpos(render, ModeReq, render->osd_plane, render->zpos_primary);
 				render->buf_osd_gl->dirty = 0;
@@ -1180,7 +1177,6 @@ page_flip:
 				if (GetPropertyValue(render->fd_drm, render->osd_plane, DRM_MODE_OBJECT_PLANE, "zpos", &value))
 					fprintf(stderr, "Failed to get property 'zpos'\n");
 				if (render->zpos_overlay == value) {
-					flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
 					SetChangePlanes(render, ModeReq, 1);
 				}
 			} else {
