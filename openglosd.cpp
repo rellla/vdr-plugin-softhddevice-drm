@@ -2225,6 +2225,14 @@ cOglPixmap::cOglPixmap(std::shared_ptr<cOglThread> oglThread, int Layer, const c
     this->oglThread = oglThread;
     int width = DrawPort.IsEmpty() ? ViewPort.Width() : DrawPort.Width();
     int height = DrawPort.IsEmpty() ? ViewPort.Height() : DrawPort.Height();
+
+    if (width > oglThread->MaxTextureSize() || height > oglThread->MaxTextureSize()) {
+        esyslog("[softhddev] cannot allocate pixmap of %dpx x %dpx, clipped to %dpx x %dpx!",
+                    width, height, std::min(width, oglThread->MaxTextureSize()), std::min(height, oglThread->MaxTextureSize()));
+        width = std::min(width, oglThread->MaxTextureSize());
+        height = std::min(height, oglThread->MaxTextureSize());
+    }
+
     fb = new cOglFb(width, height, ViewPort.Width(), ViewPort.Height());
     dirty = true; 
 }
@@ -2459,6 +2467,8 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
     GetScreenSize(&osdWidth, &osdHeight, &pixel_aspect);
     dsyslog("[softhddev]cOglOsd osdLeft %d osdTop %d screenWidth %d screenHeight %d", Left, Top, osdWidth, osdHeight);
 
+    cSize maxPixmapSize(oglThread->MaxTextureSize(), oglThread->MaxTextureSize());
+
     if (!oFb) {
         oFb = new cOglOutputFb(osdWidth, osdHeight);
         oglThread->DoCmd(new cOglCmdInitOutputFb(oFb));
@@ -2474,6 +2484,10 @@ cOglOsd::~cOglOsd() {
 //    SetActive(false);
 //    OsdClose();
 //    oglThread->DoCmd(new cOglCmdDeleteFb(bFb));
+}
+
+const cSize &cOglOsd::MaxPixmapSize(void) const {
+    return maxPixmapSize;
 }
 
 eOsdError cOglOsd::SetAreas(const tArea *Areas, int NumAreas) {
@@ -2502,15 +2516,6 @@ cPixmap *cOglOsd::CreatePixmap(int Layer, const cRect &ViewPort, const cRect &Dr
     if (!oglThread->Active())
         return NULL;
     LOCK_PIXMAPS;
-    int width = DrawPort.IsEmpty() ? ViewPort.Width() : DrawPort.Width();
-    int height = DrawPort.IsEmpty() ? ViewPort.Height() : DrawPort.Height();
-
-    if (width > oglThread->MaxTextureSize() || height > oglThread->MaxTextureSize()) {
-        esyslog("[softhddev] cannot allocate pixmap of %dpx x %dpx, clipped to %dpx x %dpx!", 
-                    width, height, std::min(width, oglThread->MaxTextureSize()), std::min(height, oglThread->MaxTextureSize()));
-        width = std::min(width, oglThread->MaxTextureSize());
-        height = std::min(height, oglThread->MaxTextureSize());
-    }
 
     cOglPixmap *p = new cOglPixmap(oglThread, Layer, ViewPort, DrawPort);
 
