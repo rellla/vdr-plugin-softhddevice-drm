@@ -610,19 +610,30 @@ static void drm_fb_destroy_callback(struct gbm_bo *bo, void *data)
 	free(buf);
 }
 
+__attribute__ ((weak)) union gbm_bo_handle
+gbm_bo_get_handle_for_plane(struct gbm_bo *bo, int plane);
+
+__attribute__ ((weak)) uint64_t
+gbm_bo_get_modifier(struct gbm_bo *bo);
+
+__attribute__ ((weak)) int
+gbm_bo_get_plane_count(struct gbm_bo *bo);
+
+__attribute__ ((weak)) uint32_t
+gbm_bo_get_stride_for_plane(struct gbm_bo *bo, int plane);
+
+__attribute__ ((weak)) uint32_t
+gbm_bo_get_offset(struct gbm_bo *bo, int plane);
+
 struct drm_buf *drm_get_buf_from_bo(VideoRender *render, struct gbm_bo *bo)
 {
 	struct drm_buf *buf = gbm_bo_get_user_data(bo);
-	uint64_t modifier[4] = { 0, 0, 0, 0 };
 	uint32_t mod_flags = 0;
+	int ret = -1;
 
-	if (buf) {
-#ifdef GL_DEBUG
-		fprintf(stderr, "SetupFB GL buffer already done! %d x %d pix_fmt %4.4s fb_id %d\n",
-			buf->width, buf->height, (char *)&buf->pix_fmt, buf->fb_id);
-#endif
+	// the buffer was already allocated
+	if (buf)
 		return buf;
-	}
 
 	buf = calloc(1, sizeof *buf);
 	buf->bo = bo;
@@ -630,24 +641,56 @@ struct drm_buf *drm_get_buf_from_bo(VideoRender *render, struct gbm_bo *bo)
 	buf->width = gbm_bo_get_width(bo);
 	buf->height = gbm_bo_get_height(bo);
 	buf->pix_fmt = gbm_bo_get_format(bo);
-	buf->handle[0] = gbm_bo_get_handle_for_plane(bo, 0).u32;
-	buf->pitch[0] = gbm_bo_get_stride_for_plane(bo, 0);
-	buf->offset[0] = 0;
 
-	modifier[0] = gbm_bo_get_modifier(bo);
-	if (modifier[0])
-		mod_flags = DRM_MODE_FB_MODIFIERS;
+	if (gbm_bo_get_handle_for_plane && gbm_bo_get_modifier &&
+            gbm_bo_get_plane_count && gbm_bo_get_stride_for_plane &&
+            gbm_bo_get_offset) {
+		uint64_t modifiers[4] = {0};
+		modifiers[0] = gbm_bo_get_modifier(bo);
+		const int num_planes = gbm_bo_get_plane_count(bo);
+		for (int i = 0; i < num_planes; i++) {
+			buf->handle[i] = gbm_bo_get_handle_for_plane(bo, i).u32;
+			buf->pitch[i] = gbm_bo_get_stride_for_plane(bo, i);
+			buf->offset[i] = gbm_bo_get_offset(bo, i);
+			modifiers[i] = modifiers[0];
+		}
 
-	// Add FB
-	if (drmModeAddFB2WithModifiers(render->fd_drm, buf->width, buf->height, buf->pix_fmt,
-			buf->handle, buf->pitch, buf->offset, modifier, &buf->fb_id, mod_flags)) {
+		if (modifiers[0]) {
+			mod_flags = DRM_MODE_FB_MODIFIERS;
+#ifdef GL_DEBUG
+			fprintf(stderr, "drm_get_buf_from_bo: Using modifier %" PRIx64 "\n", modifiers[0]);
+#endif
+		}
 
-		fprintf(stderr, "SetupFB: cannot create modifiers framebuffer (%d): %m\n", errno);
-		Fatal(_("SetupFB: cannot create modifiers framebuffer (%d): %m\n"), errno);
+		// Add FB
+		ret = drmModeAddFB2WithModifiers(render->fd_drm, buf->width, buf->height, buf->pix_fmt,
+			buf->handle, buf->pitch, buf->offset, modifiers, &buf->fb_id, mod_flags);
+	}
+
+	if (ret) {
+#ifdef GL_DEBUG
+		if (mod_flags)
+			fprintf(stderr, "drm_get_buf_from_bo: Modifiers failed!\n");
+#endif
+
+		memcpy(buf->handle, (uint32_t [4]){ gbm_bo_get_handle(bo).u32, 0, 0, 0}, 16);
+		memcpy(buf->pitch, (uint32_t [4]){ gbm_bo_get_stride(bo), 0, 0, 0}, 16);
+		memset(buf->offset, 0, 16);
+		ret = drmModeAddFB2(render->fd_drm, buf->width, buf->height, buf->pix_fmt,
+			buf->handle, buf->pitch, buf->offset, &buf->fb_id, 0);
+	}
+
+	if (ret) {
+#ifdef GL_DEBUG
+		fprintf(stderr, "drm_get_buf_from_bo: cannot create framebuffer (%d): %m\n", errno);
+		Fatal(_("drm_get_buf_from_bo: cannot create framebuffer (%d): %m\n"), errno);
+#endif
+		free(buf);
+		return NULL;
 	}
 
 #ifdef GL_DEBUG
-	fprintf(stderr, "SetupFB New GL buffer %d x %d pix_fmt %4.4s fb_id %d\n",
+	fprintf(stderr, "drm_get_buf_from_bo: New GL buffer %d x %d pix_fmt %4.4s fb_id %d\n",
 		buf->width, buf->height, (char *)&buf->pix_fmt, buf->fb_id);
 #endif
 	gbm_bo_set_user_data(bo, buf, drm_fb_destroy_callback);
