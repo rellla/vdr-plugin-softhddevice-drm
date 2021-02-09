@@ -163,7 +163,7 @@ public:
 /****************************************************************************************
 * cOglFontAtlas
 ****************************************************************************************/
-#define MAX_ATLAS_WIDTH 1024
+#define MAX_ATLAS_WIDTH 4096
 #define MIN_CHARCODE 32
 #define MAX_CHARCODE 255
 class cOglFontAtlas {
@@ -579,6 +579,7 @@ private:
     std::shared_ptr<cOglThread> oglThread;
     cVector<cOglPixmap *> oglPixmaps;
     bool isSubtitleOsd;
+    cSize maxPixmapSize;
 protected:
 public:
     cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglThread);
@@ -587,6 +588,7 @@ public:
     virtual cPixmap *CreatePixmap(int Layer, const cRect &ViewPort, const cRect &DrawPort = cRect::Null);
     virtual void DestroyPixmap(cPixmap *Pixmap);
     virtual void Flush(void);
+    virtual const cSize &MaxPixmapSize(void) const;
     virtual void DrawScaledBitmap(int x, int y, const cBitmap &Bitmap, double FactorX, double FactorY, bool AntiAlias = false);
     static cOglOutputFb *oFb;
 };
