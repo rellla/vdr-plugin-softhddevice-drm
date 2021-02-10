@@ -1165,13 +1165,13 @@ bool cOglCmdRenderFbToBufferFb::Execute(void) {
 
     GLfloat quadVertices[] = {
         // Pos    // TexCoords
-        x ,  y ,  texX1, texY1,          //left top
-        x ,  y2,  texX1, texY2,          //left bottom
-        x2,  y2,  texX2, texY2,          //right bottom
+        x ,  y ,  texX1, texY2,          //left top
+        x ,  y2,  texX1, texY1,          //left bottom
+        x2,  y2,  texX2, texY1,          //right bottom
 
-        x ,  y ,  texX1, texY1,          //left top
-        x2,  y2,  texX2, texY2,          //right bottom
-        x2,  y ,  texX2, texY1           //right top
+        x ,  y ,  texX1, texY2,          //left top
+        x2,  y2,  texX2, texY1,          //right bottom
+        x2,  y ,  texX2, texY2           //right top
     };
 
     VertexBuffers[vbTexture]->ActivateShader();
@@ -1212,8 +1212,8 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
 
     GLfloat texX1 = 0.0f;
     GLfloat texX2 = 1.0f;
-    GLfloat texY1 = 0.0f;
-    GLfloat texY2 = 1.0f;
+    GLfloat texY1 = 1.0f;
+    GLfloat texY2 = 0.0f;
 
     GLfloat quadVertices[] = {
         // Pos    // TexCoords
