@@ -2125,6 +2125,11 @@ void cOglThread::Action(void) {
     startWait->Signal();
     stalled = false;
 
+#ifdef GL_DEBUG
+    uint64_t start_flush = 0;
+    uint64_t end_flush = 0;
+    int time_reset = 0;
+#endif
     while(Running()) {
 
         if (commands.empty()) {
@@ -2138,10 +2143,20 @@ void cOglThread::Action(void) {
         Unlock();
 #ifdef GL_DEBUG
         uint64_t start = cTimeMs::Now();
+        if (strcmp(cmd->Description(), "InitFramebuffer") == 0 || time_reset) {
+            start_flush = cTimeMs::Now();
+            time_reset = 0;
+        }
 #endif
         cmd->Execute();
 #ifdef GL_DEBUG
         esyslog("[softhddev]\"%-*s\", %dms, %d commands left, time %" PRIu64 "", 15, cmd->Description(), (int)(cTimeMs::Now() - start), commands.size(), cTimeMs::Now());
+
+        if (strcmp(cmd->Description(), "Copy buffer to OutputFramebuffer") == 0) {
+            end_flush = cTimeMs::Now();
+            time_reset = 1;
+            esyslog("[softhddev] OSD Flush %dms, time %" PRIu64 "", (int)(end_flush - start_flush), cTimeMs::Now());
+        }
 #endif
         delete cmd;
         if (stalled && commands.size() < OGL_CMDQUEUE_SIZE / 2)
@@ -2651,10 +2666,6 @@ void cOglOsd::Flush(void) {
     if (!dirty)
         return;
     //clear buffer
-#ifdef GL_DEBUG
-    uint64_t start = cTimeMs::Now();
-    dsyslog("[softhddev]Start Flush at %" PRIu64 "", cTimeMs::Now());
-#endif
     oglThread->DoCmd(new cOglCmdFill(bFb, clrTransparent));
 
     //render pixmap textures blended to buffer
@@ -2685,10 +2696,6 @@ void cOglOsd::Flush(void) {
                                                      Top() + (isSubtitleOsd ? oglPixmaps[0]->ViewPort().Y() : 0), 1));
 */
     oglThread->DoCmd(new cOglCmdCopyBufferToOutputFb(bFb, oFb, Left(), Top(), 1));
-
-#ifdef GL_DEBUG
-    dsyslog("[softhddev]End Flush at %" PRIu64 ", duration %d", cTimeMs::Now(), (int)(cTimeMs::Now()-start));
-#endif
 }
 
 void cOglOsd::DrawScaledBitmap(int x, int y, const cBitmap &Bitmap, double FactorX, double FactorY, bool AntiAlias) {
