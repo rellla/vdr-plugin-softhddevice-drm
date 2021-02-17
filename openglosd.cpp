@@ -2178,10 +2178,11 @@ bool cOglThread::InitOpenGL(void) {
 #ifdef GL_DEBUG
     fprintf(stderr, "cOglThread: InitOpenGL\n");
 #endif
-    // We have to wait for the EGL Context to be created
-    // Should be solved with a mutex
-    // HACK:
-    //sleep(2);
+    // Wait for the EGL context to be created
+    while(!render->GlInit) {
+        fprintf(stderr, "wait for EGL context\n");
+        usleep(20000);
+    }
 
     eglAcquireContext(); /* eglMakeCurrent with new eglSurface */
 
