@@ -129,6 +129,7 @@ struct _Drm_Render_
 	struct gbm_bo *bo;
 	struct gbm_bo *old_bo;
 	struct gbm_bo *next_bo;
+	int GlInit;
 #endif
 };
 
