@@ -586,6 +586,7 @@ search_mode:
 	if (render->eglSurface != EGL_NO_SURFACE)
 		fprintf(stderr, "EGLSurface %p on EGLDisplay %p for %d x %d BO created\n", render->eglSurface, render->eglDisplay, s_width, s_height);
 #endif
+	render->GlInit = 1;
 #endif
 
 #ifdef DRM_DEBUG
