@@ -63,7 +63,6 @@ struct drm_buf {
 	int dirty;
 #ifdef USE_GLES
 	struct gbm_bo *bo;
-	int init;
 #endif
 };
 
