@@ -548,6 +548,31 @@ search_mode:
 		drmModeFreePlane(plane);
 	}
 
+	if (render->use_zpos && render->zpos_overlay <= render->zpos_primary) {
+#ifdef DRM_DEBUG
+		fprintf(stderr, "zpos values are wrong, so ");
+#endif
+		if (render->zpos_overlay == render->zpos_primary) {
+			// is this possible?
+#ifdef DRM_DEBUG
+			fprintf(stderr, "hardcode them to 0 and 1, because they are equal\n");
+#endif
+			render->zpos_primary = 0;
+			render->zpos_overlay = 1;
+		} else {
+#ifdef DRM_DEBUG
+			fprintf(stderr, "switch them\n");
+#endif
+			uint64_t zpos_tmp = render->zpos_primary;
+			render->zpos_primary = render->zpos_overlay;
+			render->zpos_overlay = zpos_tmp;
+		}
+	}
+#ifdef DRM_DEBUG
+	fprintf(stderr, "Init: VIDEO PLANE on %s plane_id %d with zpos %lld (zpos_overlay), OSD PLANE on %s plane_id %d with zpos %lld (zpos_primary)\n",
+                render->use_zpos ? "OVERLAY" : "PRIMARY", render->video_plane, render->use_zpos ? render->zpos_overlay : 999,
+                render->use_zpos ? "PRIMARY" : "OVERLAY", render->osd_plane, render->use_zpos ? render->zpos_primary : 999);
+#endif
 	drmModeFreePlaneResources(plane_res);
 	drmModeFreeEncoder(encoder);
 	drmModeFreeResources(resources);
