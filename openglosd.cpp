@@ -1247,6 +1247,7 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
     VertexBuffers[vbTexture]->DrawArrays();
     VertexBuffers[vbTexture]->Unbind();
 
+    GL_CHECK(glFinish());
     // eglSwapBuffers and gbm_surface_lock_front_buffer in OsdDrawARGB()
     if (active)
         OsdDrawARGB(0, 0, oFb->Width(), oFb->Height(), 0, 0, oFb->Width(), oFb->Height());
