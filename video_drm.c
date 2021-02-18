@@ -1105,82 +1105,53 @@ page_flip:
 	SetPlaneFbId(render, ModeReq, render->video_plane, buf->fb_id);
 
 	// handle the osd plane
-	if (render->OsdShown) {
-		if (render->use_zpos) {
 #ifdef USE_GLES
-			if (render->buf_osd_gl && !render->buf_osd_gl->init) {
-				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd_gl->fb_id,
-					 0, 0, render->buf_osd_gl->width, render->buf_osd_gl->height,
-					 0, 0, render->buf_osd_gl->width, render->buf_osd_gl->height);
-				render->buf_osd_gl->init = 1;
-			}
-
-			if (render->buf_osd_gl && render->buf_osd_gl->dirty) {
+	// We had draw activity on the osd buffer
+	if (render->buf_osd_gl && render->buf_osd_gl->dirty) {
+		if (render->OsdShown) {
+			SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd_gl->fb_id,
+				 0, 0, render->buf_osd_gl->width, render->buf_osd_gl->height,
+				 0, 0, render->buf_osd_gl->width, render->buf_osd_gl->height);
+			if (render->use_zpos) {
 				SetPlaneZpos(render, ModeReq, render->video_plane, render->zpos_primary);
 				SetPlaneZpos(render, ModeReq, render->osd_plane, render->zpos_overlay);
-				render->buf_osd_gl->dirty = 0;
 			}
-#else
-			if (render->buf_osd.dirty) {
-				SetChangePlanes(render, ModeReq, 0);
-				render->buf_osd.dirty = 0;
-			}
-#endif
 		} else {
-#ifdef USE_GLES
-			if (render->buf_osd_gl && render->buf_osd_gl->dirty) {
-				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd_gl->fb_id,
-					 0, 0, render->buf_osd_gl->width, render->buf_osd_gl->height,
-					 0, 0, render->buf_osd_gl->width, render->buf_osd_gl->height);
-				render->buf_osd_gl->dirty = 0;
-			}
-#else
-			if (render->buf_osd.dirty) {
-				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
-					 render->buf_osd.draw_x, render->buf_osd.draw_y, render->buf_osd.draw_width, render->buf_osd.draw_height,
-					 0, 0, render->buf_osd.draw_width, render->buf_osd.draw_height);
-				render->buf_osd.dirty = 0;
-			}
-#endif
-		}
-	} else {
-		if (render->use_zpos) {
-#ifdef USE_GLES
-			if (render->buf_osd_gl && !render->buf_osd_gl->init) {
-				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd_gl->fb_id,
-					 0, 0, render->buf_osd_gl->width, render->buf_osd_gl->height,
-					 0, 0, render->buf_osd_gl->width, render->buf_osd_gl->height);
-				render->buf_osd_gl->init = 1;
-			}
-			if (render->buf_osd_gl && render->buf_osd_gl->dirty) {
+			if (render->use_zpos) {
 				SetPlaneZpos(render, ModeReq, render->video_plane, render->zpos_overlay);
 				SetPlaneZpos(render, ModeReq, render->osd_plane, render->zpos_primary);
-				render->buf_osd_gl->dirty = 0;
-			}
-#else
-			if (render->buf_osd.dirty) {
-				SetChangePlanes(render, ModeReq, 1);
-				render->buf_osd.dirty = 0;
-			}
-#endif
-		} else {
-#ifdef USE_GLES
-			if (render->buf_osd_gl && render->buf_osd_gl->dirty) {
+			} else {
 				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd_gl->fb_id,
 					 0, 0, render->buf_osd_gl->width, render->buf_osd_gl->height,
 					 0, 0, 0, 0);
-				render->buf_osd_gl->dirty = 0;
 			}
+		}
+		render->buf_osd_gl->dirty = 0;
+	}
 #else
-			if (render->buf_osd.dirty) {
+	// We had draw activity on the osd buffer
+	if (render->buf_osd.dirty) {
+		if (render->OsdShown) {
+			if (render->use_zpos) {
+				SetChangePlanes(render, ModeReq, 0);
+			} else {
+				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
+					 render->buf_osd.draw_x, render->buf_osd.draw_y,
+					 render->buf_osd.draw_width, render->buf_osd.draw_height,
+					 0, 0, render->buf_osd.draw_width, render->buf_osd.draw_height);
+			}
+		} else {
+			if (render->use_zpos) {
+				SetChangePlanes(render, ModeReq, 1);
+			} else {
 				SetPlane(render, ModeReq, render->osd_plane, render->crtc_id, render->buf_osd.fb_id,
 					 0, 0, render->buf_osd.width, render->buf_osd.height,
 					 0, 0, 0, 0);
-				render->buf_osd.dirty = 0;
 			}
-#endif
 		}
+		render->buf_osd.dirty = 0;
 	}
+#endif
 
 	if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
 		fprintf(stderr, "Frame2Display: cannot page flip to FB %i (%d): %m\n",
@@ -1303,8 +1274,10 @@ void VideoOsdClear(VideoRender * render)
 ///
 #ifdef USE_GLES
 void VideoOsdDrawARGB(VideoRender * render, __attribute__ ((unused)) int xi,
-		__attribute__ ((unused)) int yi, __attribute__ ((unused)) int width, __attribute__ ((unused)) int height, __attribute__ ((unused)) int pitch,
-		__attribute__ ((unused)) const uint8_t * argb, __attribute__ ((unused)) int x, __attribute__ ((unused)) int y)
+		__attribute__ ((unused)) int yi,  __attribute__ ((unused)) int width,
+		__attribute__ ((unused)) int height, __attribute__ ((unused)) int pitch,
+		__attribute__ ((unused)) const uint8_t * argb,
+		__attribute__ ((unused)) int x,  __attribute__ ((unused)) int y)
 #else
 void VideoOsdDrawARGB(VideoRender * render, __attribute__ ((unused)) int xi,
 		__attribute__ ((unused)) int yi, int width, int height, int pitch,
