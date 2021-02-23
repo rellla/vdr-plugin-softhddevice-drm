@@ -63,9 +63,6 @@ int writeImage(char* filename, int width, int height, void *buffer, char* title)
 		     8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
 		     PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
-	// Swap B and R
-	png_set_bgr(png_ptr);
-
 	// Set title
 	if (title != NULL) {
 		png_text title_text;
@@ -79,8 +76,9 @@ int writeImage(char* filename, int width, int height, void *buffer, char* title)
 
 	// Write image data
 	int i;
-	for (i = 0; i < height; i++)
+	for (i = height - 1; i >= 0; i--) {
 		png_write_row(png_ptr, (png_bytep)buffer + i * width * 4);
+	}
 
 	// End write
 	png_write_end(png_ptr, NULL);
