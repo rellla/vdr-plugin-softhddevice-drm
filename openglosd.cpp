@@ -1092,7 +1092,6 @@ void cOglVb::DrawArrays(int count) {
     if (count == 0)
         count = numVertices;
     GL_CHECK(glDrawArrays(drawMode, 0, count));
-    GL_CHECK(glFlush());
 }
 
 
