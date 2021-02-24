@@ -208,6 +208,33 @@ void main() \
 } \
 ";
 
+const char *textureFragmentShaderSwapBR = 
+"#version 100 \n\
+precision mediump float; \
+varying vec2 TexCoords; \
+varying vec4 alphaValue; \
+\
+uniform vec4 bColor; \
+uniform sampler2D screenTexture; \
+\
+float clamp_to_border_factor (vec2 coords) \
+{ \
+    bvec2 out1 = greaterThan (coords, vec2 (1,1)); \
+    bvec2 out2 = lessThan (coords, vec2 (0,0)); \
+    bool do_clamp = (any (out1) || any (out2)); \
+    return float (!do_clamp); \
+} \
+\
+void main() \
+{ \
+    vec4 color = texture2D(screenTexture, TexCoords) * alphaValue; \
+    vec4 color_swapped = vec4(color.b, color.g, color.r, color.a); \
+    float f = clamp_to_border_factor (TexCoords); \
+    gl_FragColor = mix (bColor, color_swapped, f); \
+} \
+";
+
+
 const char *textVertexShader = 
 "#version 100 \n\
 \
@@ -263,6 +290,10 @@ bool cShader::Load(eShaderType type) {
         case stTexture:
             vertexCode = textureVertexShader;
             fragmentCode = textureFragmentShader;
+            break;
+        case stTextureSwapBR:
+            vertexCode = textureVertexShader;
+            fragmentCode = textureFragmentShaderSwapBR;
             break;
         case stText:
             vertexCode = textVertexShader;
@@ -973,6 +1004,13 @@ bool cOglVb::Init(void) {
         numVertices = 6;
         drawMode = GL_TRIANGLES;
         shader = stTexture;
+    } else if (type == vbTextureSwapBR) {
+        //Texture VBO definition, BR swapped
+        sizeVertex1 = 2;
+        sizeVertex2 = 2;
+        numVertices = 6;
+        drawMode = GL_TRIANGLES;
+        shader = stTextureSwapBR;
     } else if (type == vbRect) {
         //Rectangle VBO definition
         sizeVertex1 = 2;
@@ -1826,21 +1864,21 @@ bool cOglCmdDrawImage::Execute(void) {
         x2, y2,   1.0, 1.0      // right bottom     
     };
 
-    VertexBuffers[vbTexture]->ActivateShader();
-    VertexBuffers[vbTexture]->SetShaderAlpha(255);
-    VertexBuffers[vbTexture]->SetShaderProjectionMatrix(fb->Width(), fb->Height());
-    VertexBuffers[vbTexture]->SetShaderBorderColor(bcolor);
+    VertexBuffers[vbTextureSwapBR]->ActivateShader();
+    VertexBuffers[vbTextureSwapBR]->SetShaderAlpha(255);
+    VertexBuffers[vbTextureSwapBR]->SetShaderProjectionMatrix(fb->Width(), fb->Height());
+    VertexBuffers[vbTextureSwapBR]->SetShaderBorderColor(bcolor);
 
     fb->Bind();
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, texture));
     if (overlay)
-        VertexBuffers[vbTexture]->DisableBlending();
-    VertexBuffers[vbTexture]->Bind();
-    VertexBuffers[vbTexture]->SetVertexSubData(quadVertices);
-    VertexBuffers[vbTexture]->DrawArrays();
-    VertexBuffers[vbTexture]->Unbind();
+        VertexBuffers[vbTextureSwapBR]->DisableBlending();
+    VertexBuffers[vbTextureSwapBR]->Bind();
+    VertexBuffers[vbTextureSwapBR]->SetVertexSubData(quadVertices);
+    VertexBuffers[vbTextureSwapBR]->DrawArrays();
+    VertexBuffers[vbTextureSwapBR]->Unbind();
     if (overlay)
-        VertexBuffers[vbTexture]->EnableBlending();
+        VertexBuffers[vbTextureSwapBR]->EnableBlending();
     fb->Unbind();
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
     GL_CHECK(glDeleteTextures(1, &texture));
@@ -1873,17 +1911,17 @@ bool cOglCmdDrawTexture::Execute(void) {
         x2,  y1,  1.0f, 0.0f           //right bottom
     };
 
-    VertexBuffers[vbTexture]->ActivateShader();
-    VertexBuffers[vbTexture]->SetShaderAlpha(255);
-    VertexBuffers[vbTexture]->SetShaderProjectionMatrix(fb->Width(), fb->Height());
-    VertexBuffers[vbTexture]->SetShaderBorderColor(bcolor);
+    VertexBuffers[vbTextureSwapBR]->ActivateShader();
+    VertexBuffers[vbTextureSwapBR]->SetShaderAlpha(255);
+    VertexBuffers[vbTextureSwapBR]->SetShaderProjectionMatrix(fb->Width(), fb->Height());
+    VertexBuffers[vbTextureSwapBR]->SetShaderBorderColor(bcolor);
 
     fb->Bind();
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, imageRef->texture));
-    VertexBuffers[vbTexture]->Bind();
-    VertexBuffers[vbTexture]->SetVertexSubData(quadVertices);
-    VertexBuffers[vbTexture]->DrawArrays();
-    VertexBuffers[vbTexture]->Unbind();
+    VertexBuffers[vbTextureSwapBR]->Bind();
+    VertexBuffers[vbTextureSwapBR]->SetVertexSubData(quadVertices);
+    VertexBuffers[vbTextureSwapBR]->DrawArrays();
+    VertexBuffers[vbTextureSwapBR]->Unbind();
     fb->Unbind();
 
     return true;

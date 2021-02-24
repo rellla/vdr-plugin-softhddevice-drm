@@ -60,6 +60,7 @@ void ConvertColor(const GLint &colARGB, glm::vec4 &col);
 enum eShaderType {
     stRect,
     stTexture,
+    stTextureSwapBR,
     stText,
     stCount
 };
@@ -269,6 +270,7 @@ enum eVertexBufferType {
     vbEllipse,
     vbSlope,
     vbTexture,
+    vbTextureSwapBR,
     vbText,
     vbCount
 };
