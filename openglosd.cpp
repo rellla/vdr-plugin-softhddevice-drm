@@ -405,7 +405,8 @@ cOglGlyph::cOglGlyph(FT_ULong charCode, FT_BitmapGlyph ftGlyph) {
 }
 
 cOglGlyph::~cOglGlyph(void) {
-
+    if (texture)
+        GL_CHECK(glDeleteTextures(1, &texture));
 }
 
 int cOglGlyph::GetKerningCache(FT_ULong prevSym) {
@@ -661,7 +662,8 @@ cOglFontAtlas::cOglFontAtlas(FT_Face face, int height) {
 }
 
 cOglFontAtlas::~cOglFontAtlas(void) {
-    GL_CHECK(glDeleteTextures(1, &tex));
+    if (tex)
+        GL_CHECK(glDeleteTextures(1, &tex));
 }
 
 cOglAtlasGlyph* cOglFontAtlas::GetGlyph(int sym) const {
