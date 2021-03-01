@@ -1065,6 +1065,7 @@ void ClearVideo(VideoStream * stream)
 **	@retval 0	packet decoded
 **	@retval	1	stream paused
 **	@retval	-1	empty stream
+**	@retval	-2	something else went wrong
 */
 int VideoDecodeInput(VideoStream * stream)
 {
@@ -1097,21 +1098,28 @@ int VideoDecodeInput(VideoStream * stream)
 		stream->Par = NULL;
 	}
 
+	if (!atomic_read(&stream->PacketsFilled))
+		return -1;
+
 	if (stream->CodecID != AV_CODEC_ID_NONE) {
 		pthread_mutex_lock(&PktsLockMutex);
-		if (!atomic_read(&stream->PacketsFilled)) {
-			pthread_mutex_unlock(&PktsLockMutex);
-			return -1;
-		}
 		avpkt = &stream->PacketRb[stream->PacketRead];
 		if (!CodecVideoSendPacket(stream->Decoder, avpkt)) {
 			stream->PacketRead = (stream->PacketRead + 1) % VIDEO_PACKET_MAX;
 			atomic_dec(&stream->PacketsFilled);
 		}
+		else {
+			pthread_mutex_unlock(&PktsLockMutex);
+			return -2;
+		}
+
 		pthread_mutex_unlock(&PktsLockMutex);
 
-		if (!stream->NewStream)
-			CodecVideoReceiveFrame(stream->Decoder, 0);
+		if (!stream->NewStream) {
+			if (CodecVideoReceiveFrame(stream->Decoder, 0) < 0) {
+				return -2;
+			}
+		}
 	}
 
 	return 0;

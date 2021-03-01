@@ -269,6 +269,7 @@ void CodecVideoClose(VideoDecoder * decoder)
 **	@param avpkt	video packet
 **
 **	@returns 1 if packet must send again.
+**	@returns -1 if something went wrong.
 */
 int CodecVideoSendPacket(VideoDecoder * decoder, const AVPacket * avpkt)
 {
@@ -324,11 +325,16 @@ int CodecVideoSendPacket(VideoDecoder * decoder, const AVPacket * avpkt)
 		return 1;
 	}
 	pthread_mutex_unlock(&CodecLockMutex);
+
+	if (ret < 0) {
 #ifdef DEBUG
-	if (ret < 0)
 		fprintf(stderr, "CodecVideoSendPacket: send_packet ret: %s\n",
 			av_err2str(ret));
 #endif
+		if (ret != AVERROR(EAGAIN))
+			return -1;
+	}
+
 	if (ret == AVERROR(EAGAIN))
 		return 1;
 	return 0;
@@ -341,6 +347,7 @@ int CodecVideoSendPacket(VideoDecoder * decoder, const AVPacket * avpkt)
 **	@param no_deint		set interlaced_frame to 0
 **
 **	@returns 1	get no frame.
+**	@returns -1	something went wrong.
 */
 int CodecVideoReceiveFrame(VideoDecoder * decoder, int no_deint)
 {
@@ -374,10 +381,13 @@ int CodecVideoReceiveFrame(VideoDecoder * decoder, int no_deint)
 		fprintf(stderr, "CodecVideoReceiveFrame: receive_frame ret: %s\n",
 			av_err2str(ret));
 #endif
+		if (ret != AVERROR(EAGAIN))
+			return -1;
 	}
 
 	if (ret == AVERROR(EAGAIN))
 		return 1;
+
 	return 0;
 }
 
