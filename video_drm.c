@@ -804,6 +804,15 @@ dequeue:
 	frame = render->FramesRb[render->FramesRead];
 	primedata = (AVDRMFrameDescriptor *)frame->data[0];
 
+	if (!primedata->objects[0].fd) {
+		fprintf(stderr, "primedata error, drop frame\n");
+		av_frame_free(&frame);
+		render->FramesRead = (render->FramesRead + 1) % VIDEO_SURFACES_MAX;
+		atomic_dec(&render->FramesFilled);
+		render->FramesDropped++;
+		goto dequeue;
+	}
+
 	// search or made fd / FB combination
 	for (i = 0; i < render->buffers; i++) {
 		if (render->bufs[i].fd_prime == primedata->objects[0].fd) {
