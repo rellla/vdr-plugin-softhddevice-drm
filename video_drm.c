@@ -1337,10 +1337,10 @@ getinframe:
 				goto closing;
 			}
 			if (ret < 0) {
-				fprintf(stderr, "FilterHandlerThread: can't get filtered frame: %s\n",
+				fprintf(stderr, "FilterHandlerThread: can't get filtered frame: %s, reset\n",
 					av_err2str(ret));
 				av_frame_free(&filt_frame);
-				break;
+				goto filterreset;
 			}
 fillframe:
 			if (render->Filter_Close) {
@@ -1362,6 +1362,17 @@ fillframe:
 			}
 		}
 	}
+
+filterreset:
+	if (atomic_read(&render->FramesDeintFilled)) {
+		frame = render->FramesDeintRb[render->FramesDeintRead];
+		render->FramesDeintRead = (render->FramesDeintRead + 1) % VIDEO_SURFACES_MAX;
+		atomic_dec(&render->FramesDeintFilled);
+	}
+	if (frame)
+		av_frame_free(&frame);
+	if (atomic_read(&render->FramesDeintFilled))
+		goto filterreset;
 
 closing:
 	avfilter_graph_free(&render->filter_graph);
