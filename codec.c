@@ -346,18 +346,16 @@ int CodecVideoReceiveFrame(VideoDecoder * decoder, int no_deint)
 {
 	int ret;
 
-	if (!(decoder->Frame = av_frame_alloc())) {
-		Fatal(_("CodecVideoReceiveFrame: can't allocate decoder frame\n"));
-	}
-
 	pthread_mutex_lock(&CodecLockMutex);
-	if (decoder->VideoCtx) {
-		ret = avcodec_receive_frame(decoder->VideoCtx, decoder->Frame);
-	} else {
-		av_frame_free(&decoder->Frame);
+	if (!decoder->VideoCtx) {
 		pthread_mutex_unlock(&CodecLockMutex);
 		return 1;
 	}
+
+	if (!(decoder->Frame = av_frame_alloc())) {
+		Fatal(_("CodecVideoReceiveFrame: can't allocate decoder frame\n"));
+	}
+	ret = avcodec_receive_frame(decoder->VideoCtx, decoder->Frame);
 	pthread_mutex_unlock(&CodecLockMutex);
 
 	if (!ret) {
@@ -370,14 +368,15 @@ int CodecVideoReceiveFrame(VideoDecoder * decoder, int no_deint)
 		VideoRenderFrame(decoder->Render, decoder->VideoCtx, decoder->Frame);
 	} else {
 		av_frame_free(&decoder->Frame);
+
+		if (ret == AVERROR(EAGAIN))
+			return 1;
 #ifdef DEBUG
 		fprintf(stderr, "CodecVideoReceiveFrame: receive_frame ret: %s\n",
 			av_err2str(ret));
 #endif
 	}
 
-	if (ret == AVERROR(EAGAIN))
-		return 1;
 	return 0;
 }
 
