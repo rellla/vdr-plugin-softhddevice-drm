@@ -12,7 +12,7 @@
 #endif
 
 /* This is needed for the GLES2 GL_CLAMP_TO_BORDER workaround */
-#define BORDERCOLOR 0x88888888
+#define BORDERCOLOR 0x00000000
 
 /****************************************************************************************
 * Helpers
@@ -948,8 +948,8 @@ bool cOglOutputFb::Init(void) {
     GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)); // CLAMP_TO_BORDER?
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)); // CLAMP_TO_BORDER?
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
     GL_CHECK(glGenFramebuffers(1, &fb));
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fb));
 
@@ -1187,17 +1187,10 @@ bool cOglCmdRenderFbToBufferFb::Execute(void) {
     GLfloat x2 = x + fb->ViewportWidth();  //right
     GLfloat y2 = y + fb->ViewportHeight(); //bottom
 
-    GLfloat texX1 = 0.0f;
-    GLfloat texX2 = 1.0f;
-    GLfloat texY1 = 0.0f;
-    GLfloat texY2 = 1.0f;
-
-/*
     GLfloat texX1 = drawPortX / (GLfloat)fb->Width();
     GLfloat texX2 = texX1 + 1.0f;
     GLfloat texY1 = drawPortY / (GLfloat)fb->Height();
     GLfloat texY2 = texY1 + 1.0f;
-*/
 
     if (fb->Scrollable()) {
         GLfloat pageHeight = (GLfloat)fb->ViewportHeight() / (GLfloat)fb->Height();
