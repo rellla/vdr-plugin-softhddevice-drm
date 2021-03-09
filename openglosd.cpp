@@ -1682,7 +1682,7 @@ bool cOglCmdDrawText::Execute(void) {
     for (int i = 0; symbols[i]; i++) {
         if ((symbols[i] < MIN_CHARCODE) || (symbols[i] > MAX_CHARCODE)) {
             if (symbols[i]) {
-                unknown_char = i;
+                unknown_char = symbols[i];
                 break;
             }
         }
@@ -1702,6 +1702,7 @@ bool cOglCmdDrawText::Execute(void) {
 
             if (!g) {
                 esyslog("[softhddev]ERROR: could not load glyph %lx", sym);
+                continue;
             }
 
             if ( limitX && xGlyph + g->AdvanceX() > limitX )
@@ -1766,6 +1767,7 @@ bool cOglCmdDrawText::Execute(void) {
             cOglGlyph *g = f->Glyph(sym);
             if (!g) {
                 esyslog("[softhddev]ERROR: could not load glyph %lx", sym);
+                continue;
             }
 
             if ( limitX && xGlyph + g->AdvanceX() > limitX )
