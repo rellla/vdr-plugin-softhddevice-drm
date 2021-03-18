@@ -219,7 +219,7 @@ void SetPlaneCrtcId(drmModeAtomicReqPtr ModeReq, uint32_t plane_id, uint64_t crt
 }
 
 void SetPlaneCrtc(drmModeAtomicReqPtr ModeReq, uint32_t plane_id,
-		  uint64_t crtc_x, uint64_t crtc_y, uint64_t crtc_w, uint64_t crtc_h)
+		  int crtc_x, int crtc_y, int crtc_w, int crtc_h)
 {
 	SetPlanePropertyRequest(ModeReq, plane_id, "CRTC_X", crtc_x);
 	SetPlanePropertyRequest(ModeReq, plane_id, "CRTC_Y", crtc_y);
@@ -228,7 +228,7 @@ void SetPlaneCrtc(drmModeAtomicReqPtr ModeReq, uint32_t plane_id,
 }
 
 void SetPlaneSrc(drmModeAtomicReqPtr ModeReq, uint32_t plane_id,
-		 uint64_t src_x, uint64_t src_y, uint64_t src_w, uint64_t src_h)
+		 int src_x, int src_y, int src_w, int src_h)
 {
 	SetPlanePropertyRequest(ModeReq, plane_id, "SRC_X", src_x);
 	SetPlanePropertyRequest(ModeReq, plane_id, "SRC_Y", src_y);
