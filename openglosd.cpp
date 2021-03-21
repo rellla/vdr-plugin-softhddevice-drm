@@ -2615,7 +2615,7 @@ cOglOsd::~cOglOsd() {
     oglThread->DoCmd(new cOglCmdCopyBufferToOutputFb(bFb, oFb, Left(), Top(), 0));
 //    SetActive(false);
 //    OsdClose();
-//    oglThread->DoCmd(new cOglCmdDeleteFb(bFb));
+    oglThread->DoCmd(new cOglCmdDeleteFb(bFb));
 }
 
 const cSize &cOglOsd::MaxPixmapSize(void) const {
