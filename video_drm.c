@@ -425,6 +425,23 @@ static void get_properties(int fd, int plane_id, struct plane *plane)
 	}
 }
 
+static void free_properties(struct plane *plane)
+{
+	if (!plane->props)
+		return;
+
+	if (!plane->props_info)
+		return;
+
+	for (uint32_t i = 0; i < plane->props->count_props; i++) {
+		if (plane->props_info[i]) {
+			drmModeFreeProperty(plane->props_info[i]);
+		}
+	}
+	drmModeFreeObjectProperties(plane->props);
+	free(plane->props_info);
+}
+
 static int FindDevice(VideoRender * render)
 {
 	drmModeRes *resources;
@@ -530,8 +547,9 @@ search_mode:
 	if ((plane_res = drmModeGetPlaneResources(render->fd_drm)) == NULL)
 		fprintf(stderr, "FindDevice: cannot retrieve PlaneResources (%d): %m\n", errno);
 
-	render->planes[VIDEO_PLANE] = calloc(1, sizeof(*render->planes[VIDEO_PLANE]));
-	render->planes[OSD_PLANE] = calloc(1, sizeof(*render->planes[OSD_PLANE]));
+	for (i = 0; i < MAX_PLANES; i++) {
+		render->planes[i] = calloc(1, sizeof(struct plane));
+	}
 
 	for (j = 0; j < plane_res->count_planes; j++) {
 		plane = drmModeGetPlane(render->fd_drm, plane_res->planes[j]);
@@ -2197,6 +2215,13 @@ void VideoExit(VideoRender * render)
 			drmModeSetCrtc(render->fd_drm, render->saved_crtc->crtc_id, render->saved_crtc->buffer_id,
 				render->saved_crtc->x, render->saved_crtc->y, &render->connector_id, 1, &render->saved_crtc->mode);
 			drmModeFreeCrtc(render->saved_crtc);
+		}
+
+		for (int i = 0; i < MAX_PLANES; i++) {
+			if (render->planes[i]) {
+				free_properties(render->planes[i]);
+				free(render->planes[i]);
+			}
 		}
 
 		DestroyFB(render->fd_drm, &render->buf_black);
