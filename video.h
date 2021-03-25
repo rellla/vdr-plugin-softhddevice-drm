@@ -113,6 +113,13 @@ struct _Drm_Render_
 	drmModeModeInfo mode;
 	drmModeCrtc *saved_crtc;
 	drmEventContext ev;
+	struct {
+		int x;
+		int y;
+		int width;
+		int height;
+		int is_scaled;
+	} video;
 	struct drm_buf *act_buf;
 	struct drm_buf bufs[36];
 	struct drm_buf buf_osd;
@@ -188,6 +195,9 @@ extern void VideoSetClosing(VideoRender *);
 
     /// Set trick play speed.
 extern void VideoSetTrickSpeed(VideoRender *, int);
+
+    /// Set video output position and size
+extern void VideoSetOutputPosition(VideoRender *, int, int, int, int);
 
 extern void VideoFlushBuffers(VideoRender *);
 
