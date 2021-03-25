@@ -1149,24 +1149,29 @@ page_flip:
 	if (!(ModeReq = drmModeAtomicAlloc()))
 		fprintf(stderr, "Frame2Display: cannot allocate atomic request (%d): %m\n", errno);
 
-	uint64_t PicWidth = render->mode.hdisplay;
-	if (frame)
-		PicWidth = render->mode.vdisplay * av_q2d(frame->sample_aspect_ratio) *
-		frame->width / frame->height;
-	if (!PicWidth || PicWidth > render->mode.hdisplay)
-		PicWidth = render->mode.hdisplay;
-
 	// handle the video plane
-	uint64_t buf_width_tmp;
-	GetPropertyValue(render->fd_drm, render->planes[VIDEO_PLANE]->plane_id, DRM_MODE_OBJECT_PLANE, "SRC_W", &buf_width_tmp);
-	if (buf->width != (buf_width_tmp >> 16))
-			SetPlaneSrc(ModeReq, render->planes[VIDEO_PLANE]->plane_id, 0, 0, buf->width, buf->height);
+	SetPlaneSrc(ModeReq, render->planes[VIDEO_PLANE]->plane_id, 0, 0, buf->width, buf->height);
 
-	uint64_t pic_width_tmp;
-	GetPropertyValue(render->fd_drm, render->planes[VIDEO_PLANE]->plane_id, DRM_MODE_OBJECT_PLANE, "CRTC_W", &pic_width_tmp);
-	if (PicWidth != pic_width_tmp)
-			SetPlaneCrtc(ModeReq, render->planes[VIDEO_PLANE]->plane_id,
-				(render->mode.hdisplay - PicWidth) / 2, 0, PicWidth, render->mode.vdisplay);
+	// Get video size and position and set crtc rect
+	if (render->video.is_scaled) {
+		SetPlaneCrtc(ModeReq, render->planes[VIDEO_PLANE]->plane_id,
+			render->video.x, render->video.y, render->video.width, render->video.height);
+	} else {
+		uint64_t PicWidth = render->mode.hdisplay;
+		uint64_t PicHeight = render->mode.vdisplay;
+		if (frame) {
+			PicWidth = render->mode.vdisplay * av_q2d(frame->sample_aspect_ratio) *
+				frame->width / frame->height;
+			PicHeight = PicWidth / av_q2d(frame->sample_aspect_ratio);
+		}
+		if (!PicWidth || PicWidth > render->mode.hdisplay || !PicHeight || PicHeight > render->mode.vdisplay) {
+			PicWidth = render->mode.hdisplay;
+			PicHeight = render->mode.vdisplay;
+		}
+		SetPlaneCrtc(ModeReq, render->planes[VIDEO_PLANE]->plane_id,
+			(render->mode.hdisplay - PicWidth) / 2, (render->mode.vdisplay - PicHeight) / 2,
+			PicWidth, PicHeight);
+	}
 
 	SetPlaneFbId(ModeReq, render->planes[VIDEO_PLANE]->plane_id, buf->fb_id);
 
@@ -2229,6 +2234,29 @@ void VideoExit(VideoRender * render)
 
 		close(render->fd_drm);
 	}
+}
+
+///
+///	Set size and position of the video.
+///
+void VideoSetOutputPosition(VideoRender *render, int x, int y, int width, int height)
+{
+	render->video.x = x;
+	render->video.y = y;
+	render->video.width = width;
+	render->video.height = height;
+
+	if (render->video.x == 0 &&
+	    render->video.y == 0 &&
+	    render->video.width == 0 &&
+	    render->video.height == 0)
+		render->video.is_scaled = 0;
+	else
+		render->video.is_scaled = 1;
+
+#ifdef DEBUG
+	fprintf(stderr, "VideoSetOutputPosition %d %d %d %d%s\n", x, y, width, height, render->video.is_scaled ? ", video is scaled" : "");
+#endif
 }
 
 const char *VideoGetDecoderName(const char *codec_name)
