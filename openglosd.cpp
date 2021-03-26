@@ -2054,7 +2054,7 @@ int cOglThread::StoreImage(const cImage &image) {
 
     tColor *argb = MALLOC(tColor, imgSize);
     if (!argb) {
-        esyslog("[softhddev]memory allocation of %d kb for OSD image failed", imgSize  * sizeof(tColor) / 1024);
+        esyslog("[softhddev]memory allocation of %d kb for OSD image failed", (int)(imgSize  * sizeof(tColor) / 1024));
         ClearSlot(slot);
         slot = 0;
         return 0;
@@ -2183,7 +2183,7 @@ void cOglThread::Action(void) {
 #endif
         cmd->Execute();
 #ifdef GL_DEBUG
-        esyslog("[softhddev]\"%-*s\", %dms, %d commands left, time %" PRIu64 "", 15, cmd->Description(), (int)(cTimeMs::Now() - start), commands.size(), cTimeMs::Now());
+        esyslog("[softhddev]\"%-*s\", %dms, %d commands left, time %" PRIu64 "", 15, cmd->Description(), (int)(cTimeMs::Now() - start), (int)(commands.size()), cTimeMs::Now());
 
         if (strcmp(cmd->Description(), "Copy buffer to OutputFramebuffer") == 0) {
             end_flush = cTimeMs::Now();
