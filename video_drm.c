@@ -584,7 +584,7 @@ search_mode:
 										     DRM_MODE_OBJECT_PLANE, "zpos", &render->zpos_overlay)) {
 									render->use_zpos = 1;
 #ifdef DRM_DEBUG
-									fprintf(stderr, "\nVIDEO on OVERLAY zpos %lld (=render->zpos_overlay)\n", render->zpos_overlay);
+									fprintf(stderr, "\nVIDEO on OVERLAY zpos %d (=render->zpos_overlay)\n", (int)render->zpos_overlay);
 #endif
 								}
 							}
@@ -602,7 +602,7 @@ search_mode:
 										     DRM_MODE_OBJECT_PLANE, "zpos", &render->zpos_primary)) {
 									render->use_zpos = 1;
 #ifdef DRM_DEBUG
-									fprintf(stderr, "\nOSD on PRIMARY zpos %lld (=render->zpos_primary)\n", render->zpos_primary);
+									fprintf(stderr, "\nOSD on PRIMARY zpos %d (=render->zpos_primary)\n", (int)render->zpos_primary);
 #endif
 								}
 							}
@@ -643,9 +643,9 @@ search_mode:
 		}
 	}
 #ifdef DRM_DEBUG
-	fprintf(stderr, "Init: VIDEO PLANE on %s plane_id %d with zpos %lld (zpos_overlay), OSD PLANE on %s plane_id %d with zpos %lld (zpos_primary)\n",
-                render->use_zpos ? "OVERLAY" : "PRIMARY", render->planes[VIDEO_PLANE]->plane_id, render->use_zpos ? render->zpos_overlay : 999,
-                render->use_zpos ? "PRIMARY" : "OVERLAY", render->planes[OSD_PLANE]->plane_id, render->use_zpos ? render->zpos_primary : 999);
+	fprintf(stderr, "Init: VIDEO PLANE on %s plane_id %d with zpos %d (zpos_overlay), OSD PLANE on %s plane_id %d with zpos %d (zpos_primary)\n",
+                render->use_zpos ? "OVERLAY" : "PRIMARY", render->planes[VIDEO_PLANE]->plane_id, render->use_zpos ? (int)render->zpos_overlay : -1,
+                render->use_zpos ? "PRIMARY" : "OVERLAY", render->planes[OSD_PLANE]->plane_id, render->use_zpos ? (int)render->zpos_primary : -1);
 #endif
 	drmModeFreePlaneResources(plane_res);
 	drmModeFreeEncoder(encoder);
