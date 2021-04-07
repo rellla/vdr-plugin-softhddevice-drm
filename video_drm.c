@@ -1022,6 +1022,8 @@ static void Frame2Display(VideoRender * render)
 	int64_t audio_pts;
 	int64_t video_pts;
 	int i;
+	drmModeAtomicReqPtr ModeReq = NULL;
+	uint32_t flags = DRM_MODE_PAGE_FLIP_EVENT;
 
 	if (render->Closing) {
 closing:
@@ -1037,6 +1039,15 @@ dequeue:
 	while (!atomic_read(&render->FramesFilled)) {
 		if (render->Closing)
 			goto closing;
+#ifdef USE_GLES
+		// We had draw activity on the osd buffer
+		if (render->buf_osd_gl && render->buf_osd_gl->dirty)
+			goto page_flip_osd;
+#else
+		// We had draw activity on the osd buffer
+		if (render->buf_osd.dirty)
+			goto page_flip_osd;
+#endif
 		usleep(10000);
 	}
 
@@ -1139,8 +1150,6 @@ audioclock:
 page_flip:
 	render->act_buf = buf;
 
-	drmModeAtomicReqPtr ModeReq;
-	uint32_t flags = DRM_MODE_PAGE_FLIP_EVENT;
 	if (!(ModeReq = drmModeAtomicAlloc()))
 		fprintf(stderr, "Frame2Display: cannot allocate atomic request (%d): %m\n", errno);
 
@@ -1171,7 +1180,10 @@ page_flip:
 	SetPlaneCrtcId(ModeReq, render->planes[VIDEO_PLANE]->plane_id, render->crtc_id);
 	SetPlaneFbId(ModeReq, render->planes[VIDEO_PLANE]->plane_id, buf->fb_id);
 
+page_flip_osd:
 	// handle the osd plane
+	if (!ModeReq && !(ModeReq = drmModeAtomicAlloc()))
+		fprintf(stderr, "Frame2Display: cannot allocate atomic request (%d): %m\n", errno);
 #ifdef USE_GLES
 	// We had draw activity on the osd buffer
 	if (render->buf_osd_gl && render->buf_osd_gl->dirty) {
@@ -1223,8 +1235,7 @@ page_flip:
 
 	if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
 		fprintf(stderr, "Frame2Display: cannot page flip to FB %i (%d): %m\n",
-			buf->fb_id, errno);
-
+			buf ? buf->fb_id : 0, errno);
 	drmModeAtomicFree(ModeReq);
 }
 
