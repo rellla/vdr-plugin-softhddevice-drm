@@ -1045,6 +1045,15 @@ dequeue:
 	while (!atomic_read(&render->FramesFilled)) {
 		if (render->Closing)
 			goto closing;
+		// We had draw activity on the osd buffer
+#ifdef USE_GLES
+		if (render->buf_osd_gl && render->buf_osd_gl->dirty) {
+#else
+		if (render->buf_osd.dirty) {
+#endif
+			buf = &render->buf_black;
+			goto page_flip;
+		}
 		usleep(10000);
 	}
 
