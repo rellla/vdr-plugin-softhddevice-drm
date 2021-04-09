@@ -382,16 +382,39 @@ EGLConfig get_config(void)
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_NONE
     };
-    EGLConfig configs;
-    EGLint num_configs;
-    EGL_CHECK(assert(eglChooseConfig(render->eglDisplay, config_attribute_list, &configs, 1, &num_configs) == EGL_TRUE));
+    EGLConfig *configs;
+    EGLint matched;
+    EGLint count;
+    EGL_CHECK(assert(eglGetConfigs(render->eglDisplay, NULL, 0, &count) == EGL_TRUE));
+    if (count < 1) {
+        fprintf(stderr, "no EGL configs to choose from\n");
+        abort();
+    }
 
-    for (int i = 0; i < num_configs; ++i) {
+#ifdef GL_DEBUG
+    fprintf(stderr, "%d EGL configs found\n", count);
+#endif
+
+    configs = malloc(count * sizeof(*configs));
+    if (!configs)
+        abort();
+
+    EGL_CHECK(assert(eglChooseConfig(render->eglDisplay, config_attribute_list, configs, count, &matched) == EGL_TRUE));
+    if (!matched) {
+        fprintf(stderr, "no EGL configs with appropriate attributes\n");
+        abort();
+    }
+
+#ifdef GL_DEBUG
+    fprintf(stderr, "%d appropriate EGL configs found, which match attributes\n", matched);
+#endif
+
+    for (int i = 0; i < matched; ++i) {
         EGLint gbm_format;
-        EGL_CHECK(assert(eglGetConfigAttrib(render->eglDisplay, configs, EGL_NATIVE_VISUAL_ID, &gbm_format) == EGL_TRUE));
+        EGL_CHECK(assert(eglGetConfigAttrib(render->eglDisplay, configs[i], EGL_NATIVE_VISUAL_ID, &gbm_format) == EGL_TRUE));
 
         if (gbm_format == GBM_FORMAT_ARGB8888)
-            return configs;
+            return configs[i];
     }
 
     fprintf(stderr, "no matching gbm config found\n");
