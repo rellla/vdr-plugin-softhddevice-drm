@@ -2299,6 +2299,13 @@ cOglPixmap::~cOglPixmap(void) {
     oglThread->DoCmd(new cOglCmdDeleteFb(fb));
 }
 
+void cOglPixmap::SetLayer(int Layer) {
+#ifdef GL_DEBUG
+    esyslog("[softhddev] SetLayer %d", Layer);
+#endif
+    cPixmap::SetLayer(Layer);
+}
+
 void cOglPixmap::SetAlpha(int Alpha) {
     Alpha = constrain(Alpha, ALPHA_TRANSPARENT, ALPHA_OPAQUE);
     if (Alpha != cPixmap::Alpha()) {

@@ -552,6 +552,7 @@ public:
     int Y(void) { return ViewPort().Y(); };
     virtual bool IsDirty(void) { return dirty; }
     virtual void SetDirty(bool dirty = true) { this->dirty = dirty; }
+    virtual void SetLayer(int Layer);
     virtual void SetAlpha(int Alpha);
     virtual void SetTile(bool Tile);
     virtual void SetViewPort(const cRect &Rect);
